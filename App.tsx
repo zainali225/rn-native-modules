@@ -1,118 +1,103 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect, useState } from 'react';
+import { View, Text, NativeEventEmitter, Button } from 'react-native';
+// import getLocation from './LocationModule'; // import the function
+import { NativeModules } from 'react-native';
+import { PERMISSIONS, check, request } from 'react-native-permissions';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const { LocationModule } = NativeModules;
+const locationEmitter = new NativeEventEmitter(LocationModule);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+const App = () => {
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const [loc, setLoc] = useState({})
+  const [err, setErr] = useState("")
+  const [updatedAt, setUpdatedAt] = useState("")
+
+  useEffect(() => {
+    getPermission()
+    // getLocation();
+  }, []);
+
+  const getPermission = async () => {
+
+    try {
+      const isLocationEnabled = await LocationModule.checkAndRequestLocation();
+      if (isLocationEnabled) {
+        getLocation()
+      } else {
+        setErr('User denied enabling location')
+      }
+    } catch (error) {
+      setErr('Error checking location settings: ' + error);
+    }
+
+  }
+
+  const getLocation = async () => {
+    try {
+      setErr("")
+      setLoc("")
+      request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION)
+        .then(async result => {
+          if (result === "granted") {
+            console.log('result: ', result);
+
+            // Start listening for location updates
+            locationSubscribe()
+          }
+
+        })
+
+    } catch (error) {
+      console.log('Location Error: ', error);
+    }
   };
 
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+  function locationSubscribe() {
+    LocationModule.startLocationUpdates();
 
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+    const locationSubscription = locationEmitter.addListener(
+      'locationUpdated',
+      (location) => {
+        console.log('Location Updated:', location);
+        setLoc(location)
+        setUpdatedAt(new Date().toTimeString())
+      }
+    );
+
+    const errorSubscription = locationEmitter.addListener(
+      'locationError',
+      (error) => {
+        console.log('Location Error:', error.errorMessage);
+        setErr(error.errorMessage)
+      }
+    );
+
+    // Clean up the listener on component unmount
+    return () => {
+      locationSubscription.remove();
+      errorSubscription.remove();
+      LocationModule.stopLocationUpdates();
+    };
+  }
+
+  return (
+    <View>
+      <Text style={txtStyle} >Getting Location...</Text>
+      <Text style={{ ...txtStyle, color: "red" }} >Err: {err}</Text>
+      <Text style={txtStyle} >Updated At: {updatedAt}</Text>
+      <Text style={txtStyle} >Loc:{JSON.stringify(loc)}</Text>
+      <Button onPress={getPermission} title='Reload' />
+    </View>
+  );
+};
 
 export default App;
+
+
+const txtStyle = {
+  fontSize: 25
+}
