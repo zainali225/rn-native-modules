@@ -19,4 +19,12 @@ class MainActivity : ReactActivity() {
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+
+
+    // Method to change the theme to AppTheme
+    fun hideSplash() {
+        setTheme(R.style.AppTheme) // Switch to your main app theme
+        // Recreate the activity to apply the new theme
+        recreate()
+    }
 }

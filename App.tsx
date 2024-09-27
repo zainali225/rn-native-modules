@@ -5,7 +5,9 @@ import { NativeModules } from 'react-native';
 import { PERMISSIONS, check, request } from 'react-native-permissions';
 
 
-const { LocationModule } = NativeModules;
+const { LocationModule, SplashModule } = NativeModules;
+console.log('NativeModules: ', SplashModule);
+
 const locationEmitter = new NativeEventEmitter(LocationModule);
 
 
@@ -17,7 +19,8 @@ const App = () => {
   const [updatedAt, setUpdatedAt] = useState("")
 
   useEffect(() => {
-    getPermission()
+    SplashModule.hide()
+    // getPermission()
     // getLocation();
   }, []);
 
@@ -85,7 +88,7 @@ const App = () => {
   }
 
   return (
-    <View>
+    <View  style={{flex:1,backgroundColor:"#fff"}} >
       <Text style={txtStyle} >Getting Location...</Text>
       <Text style={{ ...txtStyle, color: "red" }} >Err: {err}</Text>
       <Text style={txtStyle} >Updated At: {updatedAt}</Text>
